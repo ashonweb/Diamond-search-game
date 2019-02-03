@@ -6,7 +6,8 @@ class Diamondboard  extends Component {
   constructor(props){
     super(props);
     this.state = {
-      show :false
+      show :false,
+      empty : "?",
     }
   }
 
@@ -20,9 +21,21 @@ class Diamondboard  extends Component {
      }
      else {
       // TODO: implement direction to diamond
-      return ;
+      this.setState({
+        empty : "",
+      })
+      return  ;
     }
   }
+
+  showDiamondnull =() =>{
+    console.log(this.state.empty)
+    this.setState({
+      empty : "",
+    })
+    
+  }
+  
   render(){
     const {show} = this.state;
     const {isDiamond} = this.props;
@@ -42,9 +55,12 @@ class Diamondboard  extends Component {
       }
     }
     else {
+      
       return (
-        <div className="item" onClick={this.showDiamondnull} >
-          ?   </div>
+        <div className="item" onClick={this.showDiamond} >
+          {this.state.empty}</div>
+         
+         
       )
 
     }
