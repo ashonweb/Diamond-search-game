@@ -9,7 +9,7 @@
 
 .App-header {
   background-color: #282c34;
-  min-height: 100vh;
+  min-height: 10vh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -29,4 +29,24 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.buttonclass{
+  display: inline-block;
+  vertical-align: top;
+  box-sizing: border-box;  
+  border: solid 1px black;
+  margin:2px;
+  cursor: pointer;
+  height: 70px;
+  width: 70px;  
+  background-color: #ddd;
+  opacity: 0.6;
+  transition: 0.3s;
+}
+
+
+.item {
+  text-align: center;
+  line-height: 4;
 }
