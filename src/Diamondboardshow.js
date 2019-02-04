@@ -1,30 +1,32 @@
 import React , {Component} from 'react';
-import { library } from '@fortawesome/fontawesome-svg-core'
+import { library, counter } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import {  faGem } from '@fortawesome/free-solid-svg-icons';
+import {  faGem, faThList } from '@fortawesome/free-solid-svg-icons';
 class Diamondboard  extends Component {
   constructor(props){
     super(props);
     this.state = {
       show :false,
       empty : "?",
+      count : 0,
     }
   }
 
 
   showDiamond = () =>{
-    if(this.props.isDiamond) { 
-      this.setState({
-        show : this.state.show ? false:true,
-      }
-      )
-     }
-     else {
+    if (this.props.isDiamond) {
+      if(!this.state.show) {
+        this.setState({
+          show: true,
+        }, () => this.props.incrementDiamond())        
+      }     
+    }
+    else {
       // TODO: implement direction to diamond
       this.setState({
-        empty : "",
+        empty: "",
       })
-      return  ;
+      return;
     }
   }
 
@@ -35,18 +37,28 @@ class Diamondboard  extends Component {
     })
     
   }
-  
-  render(){
-    const {show} = this.state;
-    const {isDiamond} = this.props;
+  countfunction = () =>{
+    console.log("came here")
+     this.setState({
+       count : this.state.count +1,
+     })
+  }
+
+  render() {
+    const { show ,count} = this.state;
+    const { isDiamond } = this.props;
     if (isDiamond) {
       if (show) {
         return (
-          <div className="item" onClick={this.showDiamond}>
-          <FontAwesomeIcon icon={faGem} />
-            
+          <div>
+            <div className="item" onClick={this.showDiamond} >
+              <FontAwesomeIcon icon={faGem} />
+              {/* <Counter countfunction = {this.countfunction} /> */}
             </div>
+          </div>
         )
+       
+        
       }
       else {
         return (
@@ -55,12 +67,11 @@ class Diamondboard  extends Component {
       }
     }
     else {
-      
+
       return (
         <div className="item" onClick={this.showDiamond} >
-          {this.state.empty}</div>
-         
-         
+          {this.state.empty}
+        </div>
       )
 
     }
