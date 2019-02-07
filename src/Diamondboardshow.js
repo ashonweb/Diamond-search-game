@@ -25,11 +25,18 @@ class Diamondboard  extends Component {
       // TODO: implement direction to diamond
       this.setState({
         empty: "",
-      })
-      return;
+      } , () => this.props.countmark())
     }
   }
 
+//   countmark = () => {
+//     var countq = 64;
+//     if(this.props.empty === "" && this.props.show === false){
+//       countq = countq -1 ;
+//      console.log(countq);
+//     }
+//  }
+  
   showDiamondnull =() =>{
     console.log(this.state.empty)
     this.setState({
