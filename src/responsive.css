@@ -1,0 +1,18 @@
+@media only screen and (max-width: 600px) {
+  .buttonclass{
+    display: inline-block;
+    vertical-align: top;
+    box-sizing: border-box;  
+    border: solid 1px black;
+    /* margin:2px; */
+    cursor: pointer;
+    height: 56px;
+    width: 41px;  
+    background-color: #ddd;
+    opacity: 0.6;
+    transition: 0.3s;
+    margin-top:13px;
+  }
+
+
+}
