@@ -8,6 +8,7 @@
     "@fortawesome/react-fontawesome": "^0.1.4",
     "q": "^1.5.1",
     "react": "^16.7.0",
+    "react-awesome-modal": "^2.0.5",
     "react-dom": "^16.7.0",
     "react-scripts": "2.1.3"
   },
