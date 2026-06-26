@@ -1,6 +1,92 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import './App.css';
 
+// ── Sound engine (Web Audio API, no library) ──────────────────────────────────
+let _audioCtx = null;
+const sound = {
+  muted: false,
+  ctx() {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return _audioCtx;
+  },
+  play(fn) {
+    if (this.muted) return;
+    try {
+      const ctx = this.ctx();
+      const go = () => fn(ctx);
+      ctx.state === 'suspended' ? ctx.resume().then(go).catch(() => {}) : go();
+    } catch (_) {}
+  },
+  wrong() {
+    this.play(ctx => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(220, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.12);
+      g.gain.setValueAtTime(0.2, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+      o.start(); o.stop(ctx.currentTime + 0.13);
+    });
+  },
+  diamond() {
+    this.play(ctx => {
+      [523, 659, 784].forEach((freq, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine';
+        const t = ctx.currentTime + i * 0.1;
+        o.frequency.setValueAtTime(freq, t);
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.3, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+        o.start(t); o.stop(t + 0.5);
+      });
+    });
+  },
+  mine() {
+    this.play(ctx => {
+      const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.35), ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 240;
+      const g = ctx.createGain();
+      src.connect(filt); filt.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.55, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      src.start(); src.stop(ctx.currentTime + 0.35);
+    });
+  },
+  timeUp() {
+    this.play(ctx => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(440, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(110, ctx.currentTime + 0.7);
+      g.gain.setValueAtTime(0.3, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+      o.start(); o.stop(ctx.currentTime + 0.75);
+    });
+  },
+  win() {
+    this.play(ctx => {
+      [523, 659, 784, 1047].forEach((freq, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine';
+        const t = ctx.currentTime + i * 0.1;
+        o.frequency.setValueAtTime(freq, t);
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.28, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+        o.start(t); o.stop(t + 0.75);
+      });
+    });
+  },
+};
+
 // ── Config ────────────────────────────────────────────────────────────────────
 const CONFIGS = {
   easy:   { size: 6,  diamonds: 5,  mines: 0, time: null, lives: 0 },
@@ -249,14 +335,25 @@ export default function App() {
   const [game, setGame]           = useState(null);
   const [isNewBest, setIsNewBest] = useState(false);
   const [burstIdx, setBurstIdx]   = useState(null);
-  const timerRef = useRef(null);
-  const gameRef  = useRef(null);
-  gameRef.current = game;
+  const [cursor, setCursor]       = useState(null);
+  const [soundOn, setSoundOn]     = useState(() => localStorage.getItem('dsearch-sound') !== '0');
+  const timerRef  = useRef(null);
+  const gameRef   = useRef(null);
+  const cursorRef = useRef(null);
+  gameRef.current  = game;
+  cursorRef.current = cursor;
+
+  // Sync sound mute state
+  useEffect(() => {
+    sound.muted = !soundOn;
+    localStorage.setItem('dsearch-sound', soundOn ? '1' : '0');
+  }, [soundOn]);
 
   const startGame = useCallback((difficulty) => {
     clearInterval(timerRef.current);
     setIsNewBest(false);
     setBurstIdx(null);
+    setCursor(null);
     setGame(newGame(difficulty));
   }, []);
 
@@ -289,15 +386,39 @@ export default function App() {
     }
   }, [game?.won, game?.lost]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Burst animation when lastFoundIdx changes
+  // Sound: wrong click
+  const prevWrongRef = useRef(0);
+  useEffect(() => {
+    if (!game || game.wrongClicks === prevWrongRef.current) return;
+    prevWrongRef.current = game.wrongClicks;
+    sound.wrong();
+  }, [game?.wrongClicks]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sound: mine hit
+  const prevMinesRef = useRef(0);
+  useEffect(() => {
+    if (!game || game.minesHit === prevMinesRef.current) return;
+    prevMinesRef.current = game.minesHit;
+    sound.mine();
+  }, [game?.minesHit]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sound: game end
+  useEffect(() => {
+    const g = gameRef.current;
+    if (g?.won) sound.win();
+    else if (g?.lost) g.lostReason === 'time' ? sound.timeUp() : sound.mine();
+  }, [game?.won, game?.lost]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Burst animation + diamond sound when lastFoundIdx changes
   const prevFoundRef = useRef(null);
   useEffect(() => {
     if (!game?.lastFoundIdx || game.lastFoundIdx === prevFoundRef.current) return;
     prevFoundRef.current = game.lastFoundIdx;
     setBurstIdx(game.lastFoundIdx);
+    if (!game.won) sound.diamond(); // win sound played separately on won change
     const t = setTimeout(() => setBurstIdx(null), 700);
     return () => clearTimeout(t);
-  }, [game?.lastFoundIdx]);
+  }, [game?.lastFoundIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleClick = useCallback((idx) => {
     setGame(prev => {
@@ -328,7 +449,7 @@ export default function App() {
     });
   }, []);
 
-  const useHint = useCallback(() => {
+  const activateHint = useCallback(() => {
     setGame(prev => {
       if (!prev || prev.won || prev.lost || prev.hintsUsed >= 1) return prev;
       const cfg = CONFIGS[prev.difficulty];
@@ -340,6 +461,41 @@ export default function App() {
       return { ...prev, revealed, found, hintsUsed: prev.hintsUsed + 1, lastFoundIdx: idx, won: found === cfg.diamonds };
     });
   }, []);
+
+  // Keyboard navigation (after handlers are defined)
+  useEffect(() => {
+    function onKey(e) {
+      const g = gameRef.current;
+      if (!g || g.won || g.lost) return;
+      const size = CONFIGS[g.difficulty].size;
+      const cur  = cursorRef.current;
+
+      if (e.key.startsWith('Arrow')) {
+        e.preventDefault();
+        const start = cur ?? Math.floor((size * size) / 2);
+        const r = Math.floor(start / size), c = start % size;
+        let nr = r, nc = c;
+        if (e.key === 'ArrowUp'    && r > 0)        nr--;
+        if (e.key === 'ArrowDown'  && r < size - 1) nr++;
+        if (e.key === 'ArrowLeft'  && c > 0)        nc--;
+        if (e.key === 'ArrowRight' && c < size - 1) nc++;
+        setCursor(nr * size + nc);
+      } else if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        if (cur === null) { setCursor(Math.floor((size * size) / 2)); return; }
+        handleClick(cur);
+      } else if (e.key === 'f' || e.key === 'F') {
+        if (cur === null) return;
+        e.preventDefault();
+        handleRightClick({ preventDefault: () => {} }, cur);
+      } else if (e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        activateHint();
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [handleClick, handleRightClick, activateHint]);
 
   if (!game) return <DifficultyScreen onSelect={startGame} />;
 
@@ -363,6 +519,9 @@ export default function App() {
             ? `Daily #${game.dailyNum} · 8×8 · 8 diamonds · 3 min`
             : `${cfg.size}×${cfg.size} · ${cfg.diamonds} diamonds${cfg.mines ? ` · ${cfg.mines} mines` : ''}`}
         </div>
+        <button className="btn-mute" onClick={() => setSoundOn(s => !s)} title={soundOn ? 'Mute' : 'Unmute'}>
+          {soundOn ? '🔊' : '🔇'}
+        </button>
       </header>
 
       <div className="stats">
@@ -399,7 +558,7 @@ export default function App() {
             const showMine   = !isRevealed && gameOver && isMine;
             const isBurst    = burstIdx === i;
 
-            let cls = 'cell';
+            let cls = 'cell' + (cursor === i ? ' kb-cursor' : '');
             if (showMine)            cls += ' mine-show';
             else if (!isRevealed)    cls += ' unrevealed';
             else if (isDiamond)      cls += ' revealed diamond' + (isBurst ? ' burst' : '');
@@ -430,16 +589,16 @@ export default function App() {
       <div className="bottom-bar">
         <button className="btn-secondary" onClick={() => setGame(null)}>← Menu</button>
         {!gameOver && game.hintsUsed < 1 && (
-          <button className="btn-hint" onClick={useHint}>◉ Scan<span className="hint-cost"> −100</span></button>
+          <button className="btn-hint" onClick={activateHint}>◉ Scan<span className="hint-cost"> −100</span></button>
         )}
         {game.difficulty !== 'daily' && (
           <button className="btn-primary" onClick={() => startGame(game.difficulty)}>↺ New Game</button>
         )}
       </div>
 
-      {/* Right-click tip */}
+      {/* Controls tip */}
       {!gameOver && (
-        <div className="tip">Right-click cells to flag ◆ diamonds or ✕ mines</div>
+        <div className="tip">Right-click / F · flag cell &nbsp;·&nbsp; Arrow keys · move &nbsp;·&nbsp; Space · reveal &nbsp;·&nbsp; H · hint</div>
       )}
 
       {/* Win overlay */}

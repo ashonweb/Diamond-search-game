@@ -172,7 +172,19 @@
 .btn-share:hover { background: rgba(250,204,21,0.2); border-color: rgba(250,204,21,0.55); }
 
 /* ── tip ──────────────────────────────────────────────────────────────────────── */
-.tip { font-size: 9px; color: rgba(192,132,252,0.22); letter-spacing: 0.12em; text-transform: uppercase; position: relative; z-index: 1; }
+/* ── mute button ──────────────────────────────────────────────────────────────── */
+.btn-mute {
+  background: transparent; border: 1px solid rgba(168,85,247,0.18);
+  font-size: 14px; padding: 4px 8px; cursor: pointer;
+  transition: all 0.18s; line-height: 1; margin-top: 8px; color: rgba(192,132,252,0.5);
+}
+.btn-mute:hover { border-color: rgba(168,85,247,0.4); color: rgba(192,132,252,0.9); }
+
+/* ── keyboard cursor ──────────────────────────────────────────────────────────── */
+.cell.kb-cursor { outline: 2px solid rgba(192,132,252,0.75); outline-offset: -2px; z-index: 2; }
+.cell.kb-cursor.unrevealed { background: #1e0d38; }
+
+.tip { font-size: 9px; color: rgba(192,132,252,0.2); letter-spacing: 0.09em; text-transform: uppercase; position: relative; z-index: 1; text-align: center; }
 
 /* ── overlays ─────────────────────────────────────────────────────────────────── */
 .overlay { position: fixed; inset: 0; background: rgba(12,1,24,0.88); z-index: 100; display: flex; align-items: center; justify-content: center; animation: fade-in 0.2s ease; }
