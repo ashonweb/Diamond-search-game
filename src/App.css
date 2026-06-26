@@ -208,6 +208,58 @@
 .ov-note  { font-size: 10px; color: rgba(103,232,249,0.45); letter-spacing: 0.1em; }
 .ov-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 8px; }
 
+/* ── challenge accept screen ─────────────────────────────────────────────────── */
+.challenge-card {
+  background: #160a28; border: 1px solid rgba(168,85,247,0.3);
+  padding: 40px 48px; display: flex; flex-direction: column; align-items: center; gap: 12px;
+  text-align: center; position: relative; z-index: 1;
+  animation: card-up 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.challenge-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background: linear-gradient(90deg, transparent, #c084fc, #facc15, transparent); }
+.chal-icon  { font-size: 36px; }
+.chal-from  { font-size: 16px; font-weight: 700; color: #fff; letter-spacing: 0.05em; }
+.chal-score { font-size: 44px; font-weight: 900; color: #c084fc; line-height: 1; }
+.chal-score span { font-size: 18px; font-weight: 400; color: rgba(192,132,252,0.5); }
+.chal-detail { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.chal-sub   { font-size: 10px; color: rgba(192,132,252,0.4); letter-spacing: 0.12em; }
+.chal-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 8px; }
+
+/* ── challenge result (in win overlay) ───────────────────────────────────────── */
+.chal-result { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
+.cr-row { display: flex; justify-content: space-between; width: 100%; padding: 8px 14px;
+  font-size: 13px; font-weight: 700; letter-spacing: 0.06em; }
+.cr-row.cr-win  { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.25); color: #4ade80; }
+.cr-row.cr-lose { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2); color: rgba(192,132,252,0.7); }
+.cr-row.cr-tie  { background: rgba(250,204,21,0.08); border: 1px solid rgba(250,204,21,0.2); color: #facc15; }
+.cr-row.cr-them { background: rgba(168,85,247,0.06); border: 1px solid rgba(168,85,247,0.15); color: rgba(192,132,252,0.6); }
+.cr-vs      { font-size: 9px; color: rgba(192,132,252,0.3); letter-spacing: 0.2em; text-transform: uppercase; }
+.cr-verdict { font-size: 13px; font-weight: 700; color: #fff; margin-top: 4px; letter-spacing: 0.05em; }
+
+/* ── challenge create (in win overlay) ───────────────────────────────────────── */
+.btn-challenge {
+  background: rgba(250,204,21,0.08); border: 1px solid rgba(250,204,21,0.3);
+  color: #facc15; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+  padding: 12px 20px; cursor: pointer; transition: all 0.18s;
+}
+.btn-challenge:hover { background: rgba(250,204,21,0.16); border-color: rgba(250,204,21,0.55); }
+
+.chal-input-row { display: flex; gap: 8px; width: 100%; }
+.name-input {
+  flex: 1; background: #0c0118; border: 1px solid rgba(168,85,247,0.35);
+  color: #fff; font-size: 12px; padding: 10px 12px; outline: none;
+  letter-spacing: 0.05em;
+}
+.name-input::placeholder { color: rgba(192,132,252,0.3); }
+.name-input:focus { border-color: rgba(168,85,247,0.65); }
+
+.btn-copy-link {
+  background: rgba(250,204,21,0.1); border: 1px solid rgba(250,204,21,0.35);
+  color: #facc15; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 10px 14px; cursor: pointer; transition: all 0.18s; white-space: nowrap;
+}
+.btn-copy-link:hover { background: rgba(250,204,21,0.2); }
+
 /* ── responsive ────────────────────────────────────────────────────────────────── */
 @media (max-width: 560px) {
   .diff-card { width: 130px; padding: 18px 12px; }

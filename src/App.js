@@ -202,12 +202,35 @@ function calcScore(game) {
   return Math.max(0, s);
 }
 
+// ── Challenge links ────────────────────────────────────────────────────────────
+function buildChallengeURL(seed, difficulty, score, wrongClicks, timeLeft, name) {
+  const p = { s: seed, d: difficulty, sc: score, wc: wrongClicks, tl: timeLeft ?? -1, n: (name || 'Anonymous').slice(0, 24) };
+  return `${window.location.origin}${window.location.pathname}?c=${btoa(JSON.stringify(p))}`;
+}
+
+function parseChallengeURL() {
+  try {
+    const c = new URLSearchParams(window.location.search).get('c');
+    if (!c) return null;
+    const d = JSON.parse(atob(c));
+    if (!d.s || !d.d || d.sc == null || !CONFIGS[d.d]) return null;
+    return { seed: d.s, difficulty: d.d, score: d.sc, wrongClicks: d.wc ?? 0, timeLeft: d.tl >= 0 ? d.tl : null, name: d.n || 'Anonymous' };
+  } catch { return null; }
+}
+
 // ── Game state ─────────────────────────────────────────────────────────────────
-function newGame(difficulty) {
+function newGame(difficulty, seedOverride = null) {
   const cfg = CONFIGS[difficulty];
-  const rng = difficulty === 'daily' ? mulberry32(dailyNumber() * 1000003 + 7) : Math.random;
+  let seed, rng;
+  if (difficulty === 'daily') {
+    seed = dailyNumber() * 1000003 + 7;
+    rng  = mulberry32(seed);
+  } else {
+    seed = seedOverride ?? (Math.random() * 2147483647 | 0);
+    rng  = mulberry32(seed);
+  }
   const { diamonds, mines } = placePieces(cfg.size, cfg.diamonds, cfg.mines, rng);
-  return { id: Date.now(), difficulty, dailyNum: dailyNumber(), diamonds, mines, revealed: new Set(), flags: new Map(), found: 0, wrongClicks: 0, minesHit: 0, lives: cfg.lives, timeLeft: cfg.time, hintsUsed: 0, lastFoundIdx: null, won: false, lost: false, lostReason: null };
+  return { id: Date.now(), difficulty, seed, dailyNum: dailyNumber(), diamonds, mines, revealed: new Set(), flags: new Map(), found: 0, wrongClicks: 0, minesHit: 0, lives: cfg.lives, timeLeft: cfg.time, hintsUsed: 0, lastFoundIdx: null, won: false, lost: false, lostReason: null };
 }
 
 function applyReveal(state, idx) {
@@ -330,13 +353,44 @@ function DifficultyScreen({ onSelect }) {
   );
 }
 
+// ── Challenge accept screen ───────────────────────────────────────────────────
+function ChallengeAcceptScreen({ challenge, onAccept, onDecline }) {
+  const cfg  = CONFIGS[challenge.difficulty];
+  const info = DIFF_INFO[challenge.difficulty];
+  return (
+    <div className="app">
+      <header className="header">
+        <div className="header-logo"><Logo /><div className="header-title">Diamond Search</div></div>
+        <div className="header-sub">Challenge received</div>
+      </header>
+      <div className="challenge-card">
+        <div className="chal-icon">⚔</div>
+        <div className="chal-from">{challenge.name} challenged you!</div>
+        <div className="chal-score">{challenge.score} <span>pts</span></div>
+        <div className="chal-detail" style={{ color: info?.accent }}>
+          {info?.label} · {cfg.size}×{cfg.size} · {cfg.diamonds} diamonds{cfg.mines ? ` · ${cfg.mines} mines` : ''}
+        </div>
+        <div className="chal-sub">Same board · beat their score to win</div>
+        <div className="chal-actions">
+          <button className="btn-primary" onClick={onAccept}>⚔ Accept Challenge</button>
+          <button className="btn-secondary" onClick={onDecline}>Play Normally</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [game, setGame]           = useState(null);
-  const [isNewBest, setIsNewBest] = useState(false);
-  const [burstIdx, setBurstIdx]   = useState(null);
-  const [cursor, setCursor]       = useState(null);
-  const [soundOn, setSoundOn]     = useState(() => localStorage.getItem('dsearch-sound') !== '0');
+  const [game, setGame]             = useState(null);
+  const [isNewBest, setIsNewBest]   = useState(false);
+  const [burstIdx, setBurstIdx]     = useState(null);
+  const [cursor, setCursor]         = useState(null);
+  const [soundOn, setSoundOn]       = useState(() => localStorage.getItem('dsearch-sound') !== '0');
+  const [challengeData, setChallengeData]         = useState(null);
+  const [challengerName, setChallengerName]       = useState(() => localStorage.getItem('dsearch-name') || '');
+  const [showChalInput, setShowChalInput]         = useState(false);
+  const [linkCopied, setLinkCopied]               = useState(false);
   const timerRef  = useRef(null);
   const gameRef   = useRef(null);
   const cursorRef = useRef(null);
@@ -349,12 +403,20 @@ export default function App() {
     localStorage.setItem('dsearch-sound', soundOn ? '1' : '0');
   }, [soundOn]);
 
-  const startGame = useCallback((difficulty) => {
+  // Parse challenge URL on mount
+  useEffect(() => {
+    const ch = parseChallengeURL();
+    if (ch) { setChallengeData(ch); window.history.replaceState({}, '', window.location.pathname); }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const startGame = useCallback((difficulty, seedOverride = null) => {
     clearInterval(timerRef.current);
     setIsNewBest(false);
     setBurstIdx(null);
     setCursor(null);
-    setGame(newGame(difficulty));
+    setShowChalInput(false);
+    setLinkCopied(false);
+    setGame(newGame(difficulty, seedOverride));
   }, []);
 
   // Timer — deps on id/won/lost so it doesn't restart on every click
@@ -497,6 +559,15 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [handleClick, handleRightClick, activateHint]);
 
+  if (!game && challengeData) {
+    return (
+      <ChallengeAcceptScreen
+        challenge={challengeData}
+        onAccept={() => startGame(challengeData.difficulty, challengeData.seed)}
+        onDecline={() => { setChallengeData(null); }}
+      />
+    );
+  }
   if (!game) return <DifficultyScreen onSelect={startGame} />;
 
   const cfg      = CONFIGS[game.difficulty];
@@ -607,19 +678,65 @@ export default function App() {
           <div className="overlay-card win">
             <div className="ov-icon">💎</div>
             <div className="ov-title">All Found!</div>
-            <div className="ov-score">{score} points</div>
-            {isNewBest && <div className="ov-best">★ New best score!</div>}
-            {game.hintsUsed > 0 && <div className="ov-note">Hint used · −100 pts</div>}
+
+            {challengeData ? (
+              <div className="chal-result">
+                <div className={`cr-row ${score > challengeData.score ? 'cr-win' : score < challengeData.score ? 'cr-lose' : 'cr-tie'}`}>
+                  <span>You</span><span>{score} pts</span>
+                </div>
+                <div className="cr-vs">vs</div>
+                <div className="cr-row cr-them">
+                  <span>{challengeData.name}</span><span>{challengeData.score} pts</span>
+                </div>
+                <div className="cr-verdict">
+                  {score > challengeData.score ? '🎉 You won the challenge!' : score < challengeData.score ? '😤 They beat you!' : '🤝 It\'s a tie!'}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="ov-score">{score} points</div>
+                {isNewBest && <div className="ov-best">★ New best score!</div>}
+                {game.hintsUsed > 0 && <div className="ov-note">Hint used · −100 pts</div>}
+              </>
+            )}
+
             <div className="ov-actions">
               {game.difficulty === 'daily' ? (
                 <>
                   <ShareButton num={game.dailyNum} record={{ won: true, score, wrongClicks: game.wrongClicks, hintsUsed: game.hintsUsed, timeLeft: game.timeLeft }} />
                   <button className="btn-secondary" onClick={() => setGame(null)}>← Menu</button>
                 </>
+              ) : challengeData ? (
+                <>
+                  <button className="btn-primary" onClick={() => startGame(challengeData.difficulty, challengeData.seed)}>↺ Rematch</button>
+                  <button className="btn-secondary" onClick={() => { setChallengeData(null); setGame(null); }}>← Menu</button>
+                </>
               ) : (
                 <>
-                  <button className="btn-primary"   onClick={() => startGame(game.difficulty)}>↺ Play Again</button>
-                  <button className="btn-secondary" onClick={() => setGame(null)}>← Menu</button>
+                  {!showChalInput ? (
+                    <button className="btn-challenge" onClick={() => setShowChalInput(true)}>⚔ Challenge a Friend</button>
+                  ) : (
+                    <div className="chal-input-row">
+                      <input
+                        className="name-input"
+                        placeholder="Your name"
+                        value={challengerName}
+                        maxLength={24}
+                        autoFocus
+                        onChange={e => { setChallengerName(e.target.value); localStorage.setItem('dsearch-name', e.target.value); }}
+                      />
+                      <button className="btn-copy-link" onClick={() => {
+                        const url = buildChallengeURL(game.seed, game.difficulty, score, game.wrongClicks, game.timeLeft, challengerName || 'Anonymous');
+                        navigator.clipboard.writeText(url)
+                          .then(() => { setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2500); })
+                          .catch(() => window.prompt('Copy link:', url));
+                      }}>
+                        {linkCopied ? '✓ Copied!' : '↗ Copy Link'}
+                      </button>
+                    </div>
+                  )}
+                  <button className="btn-primary" onClick={() => startGame(game.difficulty)}>↺ Play Again</button>
+                  <button className="btn-secondary" onClick={() => { setShowChalInput(false); setGame(null); }}>← Menu</button>
                 </>
               )}
             </div>
@@ -633,12 +750,13 @@ export default function App() {
           <div className="overlay-card lose">
             <div className="ov-icon">{game.lostReason === 'time' ? '⏰' : '💣'}</div>
             <div className="ov-title">{game.lostReason === 'time' ? "Time's Up!" : 'Boom!'}</div>
+            {challengeData && <div className="ov-note">Target: {challengeData.name} · {challengeData.score} pts</div>}
             <div className="ov-score">{game.found} of {cfg.diamonds} found</div>
             <div className="ov-actions">
               {game.difficulty !== 'daily' && (
-                <button className="btn-primary" onClick={() => startGame(game.difficulty)}>↺ Try Again</button>
+                <button className="btn-primary" onClick={() => startGame(game.difficulty, challengeData?.seed)}>↺ Try Again</button>
               )}
-              <button className="btn-secondary" onClick={() => setGame(null)}>← Menu</button>
+              <button className="btn-secondary" onClick={() => { setChallengeData(null); setGame(null); }}>← Menu</button>
             </div>
           </div>
         </div>
